@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>京东评论情感分析</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: linear-gradient(135deg, #e8f0fe 0%, #f6f9ff 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 560px;
+    }
+    h1 { font-size: 22px; color: #1a1a2e; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: #888; margin-bottom: 22px; }
+    textarea {
+      width: 100%;
+      height: 110px;
+      border: 1px solid #d9e2f0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+    }
+    textarea:focus { border-color: #4f7cff; }
+    button {
+      margin-top: 14px;
+      width: 100%;
+      padding: 12px 0;
+      font-size: 16px;
+      color: #fff;
+      background: #4f7cff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover { background: #3a63e0; }
+    button:disabled { background: #a8bdf0; cursor: not-allowed; }
+    #result {
+      margin-top: 20px;
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 15px;
+      display: none;
+      word-break: break-all;
+    }
+    #result.success { display: block; background: #f0f7f0; border: 1px solid #bfe3bf; }
+    #result.error   { display: block; background: #fdf0f0; border: 1px solid #f0c4c4; }
+    #result .label { font-size: 20px; font-weight: bold; }
+    #result .label.good { color: #1a7f37; }
+    #result .label.bad  { color: #c62828; }
+    .meter {
+      margin-top: 10px;
+      height: 8px;
+      background: #e5e9f2;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .meter > div { height: 100%; border-radius: 4px; transition: width .4s; }
+    #result .meta { margin-top: 8px; font-size: 12px; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🛒 京东评论情感分析</h1>
+    <p class="subtitle">模型：uer/roberta-base-finetuned-jd-binary-chinese（好评 / 差评）</p>
+
+    <textarea id="text" placeholder="输入一条商品评论，例如：这个手机很好用，性价比高！"></textarea>
+    <button id="btn" onclick="analyze()">分析情感</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function analyze() {
+      const textEl = document.getElementById("text");
+      const btn = document.getElementById("btn");
+      const box = document.getElementById("result");
+      const text = textEl.value.trim();
+
+      if (!text) {
+        box.className = "error";
+        box.innerHTML = "⚠️ 请先输入要分析的文本";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "分析中…";
+      box.style.display = "none";
+
+      try {
+        const resp = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          throw new Error(data.detail || "接口返回错误：" + resp.status);
+        }
+
+        const isGood = data.label === "好评";
+        box.className = "success";
+        box.innerHTML =
+          '<div class="label ' + (isGood ? "good" : "bad") + '">' +
+            (isGood ? "😀 好评" : "😞 差评") +
+          "</div>" +
+          '<div class="meter"><div style="width:' + Math.round(data.confidence * 100) + "%;background:" +
+            (isGood ? "#1a7f37" : "#c62828") +
+          '"></div></div>' +
+          '<div class="meta">置信度 ' + (data.confidence * 100).toFixed(2) +
+            "% &nbsp;|&nbsp; " + data.label_en + "</div>";
+      } catch (err) {
+        box.className = "error";
+        box.innerHTML = "⚠️ 请求失败：" + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "分析情感";
+      }
+    }
+
+    // 支持 Ctrl+Enter 快捷提交
+    document.getElementById("text").addEventListener("keydown", function (e) {
+      if (e.ctrlKey && e.key === "Enter") analyze();
+    });
+  </script>
+</body>
+</html>
