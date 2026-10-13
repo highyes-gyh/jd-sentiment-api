@@ -1,0 +1,10 @@
+# Web 框架与服务器
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+
+# 模型推理
+torch>=2.0.0
+transformers>=4.40.0
+
+# 接口测试
+requests>=2.31.0
