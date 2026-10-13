@@ -102,7 +102,10 @@
 
       btn.disabled = true;
       btn.textContent = "分析中…";
-      box.style.display = "none";
+      // 隐藏旧结果：清掉类名即可（CSS 默认 #result 为 display:none），
+      // 不要用内联 style.display，否则会覆盖 .success/.error 的显示规则
+      box.className = "";
+      box.innerHTML = "";
 
       try {
         const resp = await fetch("/predict", {
